@@ -130,6 +130,11 @@
 
 #include "MMCTime.h"
 
+#ifdef WAYLAND_CLIENT
+#include <wayland-client.h>
+#include "xdg-decoration-unstable-v1-client-protocol.h"
+#endif
+
 namespace {
 QString profileInUseFilter(const QString& profile, bool used)
 {
@@ -230,11 +235,24 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
         ui->instanceToolBar->setEnabled(false);
         setInstanceActionsEnabled(false);
 
-        // add a close button at the end of the main toolbar when running on gamescope / steam deck
-        // FIXME: detect if we don't have server side decorations instead
-        if (qgetenv("XDG_CURRENT_DESKTOP") == "gamescope") {
-            ui->mainToolBar->addAction(ui->actionCloseWindow);
+#ifdef WAYLAND_CLIENT
+        auto* wl_display = wl_display_connect(NULL);
+        if (wl_display) {
+            qInfo() << "HAVE DISPLAY" << wl_display;
+
+            auto* registry = wl_display_get_registry(wl_display);
+            if (registry) {
+                qInfo() << "HAVE REGISTRY" << registry;
+
+                auto* decoration_manager = wl_registry_bind(registry, 1, &zxdg_decoration_manager_v1_interface, 1);
+                qInfo() << "HAVE DECORATOR" <<  decoration_manager;
+                if (!decoration_manager) {
+
+                    ui->mainToolBar->addAction(ui->actionCloseWindow);
+                }
+            }
         }
+#endif
     }
 
     // add the toolbar toggles to the view menu

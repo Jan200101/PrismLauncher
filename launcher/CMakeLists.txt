@@ -1250,6 +1250,47 @@ if (UNIX AND NOT CYGWIN AND NOT APPLE)
     )
 endif()
 
+if (wayland-client_FOUND AND wayland-scanner_FOUND)
+    set(PROTO_DIR "${CMAKE_CURRENT_BINARY_DIR}/wayland-protocols")
+    file(MAKE_DIRECTORY ${PROTO_DIR})
+    target_include_directories(Launcher_logic PUBLIC "${PROTO_DIR}")
+
+    file(GLOB PROTOCOLS RELATIVE "${CMAKE_SOURCE_DIR}/wayland-protocols/" "${CMAKE_SOURCE_DIR}/wayland-protocols/*.xml")
+    foreach(XML IN LISTS PROTOCOLS)
+        string(REGEX REPLACE "\\.xml$" "" PROTO "${XML}")
+        set(XML "${CMAKE_SOURCE_DIR}/wayland-protocols/${XML}")
+        message(STATUS "Processing wayland protocol ${PROTO}")
+
+        set(PROT_C "${PROTO_DIR}/${PROTO}-protocol.c")
+        set(PROT_H "${PROTO_DIR}/${PROTO}-client-protocol.h")
+
+        add_custom_command(
+            OUTPUT "${PROT_H}"
+            DEPENDS "${XML}"
+            COMMAND "${wayland-scanner}"
+            ARGS client-header "${XML}" "${PROT_H}"
+        )
+
+        add_custom_command(
+            OUTPUT "${PROT_C}"
+            DEPENDS "${PROT_H}"
+            COMMAND "${wayland-scanner}"
+            ARGS private-code "${XML}" "${PROT_C}"
+        )
+
+        set(PROT_LIB "wayland-${PROTO}")
+        add_library(${PROT_LIB} OBJECT "${PROT_C}")
+        message("${PROT_C}")
+
+        target_link_libraries(Launcher_logic ${PROT_LIB})
+    endforeach()
+
+    target_link_libraries(Launcher_logic
+        wayland-client
+    )
+    add_compile_definitions(WAYLAND_CLIENT)
+endif()
+
 target_link_libraries(Launcher_logic
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Xml

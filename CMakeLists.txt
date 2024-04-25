@@ -335,6 +335,15 @@ if(NOT Launcher_FORCE_BUNDLED_LIBS)
 
     # Find cmark
     find_package(cmark QUIET)
+
+    find_package(PkgConfig)
+    if(PkgConfig_FOUND)
+        # Find wayland-client
+        pkg_search_module(wayland-client QUIET IMPORTED_TARGET GLOBAL wayland-client)
+
+        # Find wayland-scanner
+        find_program(wayland-scanner NAMES wayland-scanner)
+    endif()
 endif()
 
 include(ECMQtDeclareLoggingCategory)
@@ -521,6 +530,14 @@ else()
     message(STATUS "Using system ghc_filesystem")
 endif()
 add_subdirectory(libraries/qdcss) # css parser
+if (wayland-client_FOUND)
+    add_library(wayland-client ALIAS PkgConfig::wayland-client)
+    message(STATUS "Found wayland-client")
+endif()
+if (wayland-scanner AND NOT wayland-scanner STREQUAL "wayland-scanner-NOTFOUND")
+    set(wayland-scanner_FOUND 1)
+    message(STATUS "Found wayland-scanner")
+endif()
 
 ############################### Built Artifacts ###############################
 
